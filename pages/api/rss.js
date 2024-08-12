@@ -1,18 +1,30 @@
-import chrome from "chrome-aws-lambda";
-import puppeteer from "puppeteer-core";
+import { NextRequest, NextResponse } from "next/server";
+import puppeteerCore from "puppeteer-core";
+import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
 
 const LOCAL_CHROME_EXECUTABLE =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
-export default async function handler(req, res) {
-  const executablePath =
-    (await chrome.executablePath) || LOCAL_CHROME_EXECUTABLE;
+async function getBrowser() {
+  if (process.env.VERCEL_ENV === "production") {
+    const executablePath = await chromium.executablePath();
 
-  const browser = await puppeteer.launch({
-    args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
-    executablePath: executablePath,
-    headless: false,
-  });
+    const browser = await puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+    });
+    return browser;
+  } else {
+    const browser = await puppeteer.launch();
+    return browser;
+  }
+}
+
+export default async function handler(req, res) {
+  const browser = await getBrowser();
 
   const page = await browser.newPage();
   const targetUrl =
