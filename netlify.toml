@@ -6,4 +6,4 @@ publish = ".next"
 package = "@netlify/plugin-nextjs"
 
 [[plugins]]
-package = "@netlify/plugin-nextjs"
+package = "netlify-plugin-chromium"
