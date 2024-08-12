@@ -1,11 +1,17 @@
 import chrome from "chrome-aws-lambda";
 import puppeteer from "puppeteer-core";
 
+const LOCAL_CHROME_EXECUTABLE =
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
 export default async function handler(req, res) {
+  const executablePath =
+    (await chrome.executablePath) || LOCAL_CHROME_EXECUTABLE;
+
   const browser = await puppeteer.launch({
     args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
-    executablePath: await chrome.executablePath,
-    headless: chrome.headless,
+    executablePath: executablePath,
+    headless: false,
   });
 
   const page = await browser.newPage();
