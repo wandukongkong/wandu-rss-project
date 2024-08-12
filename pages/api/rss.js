@@ -1,9 +1,8 @@
-import { defineEventHandler } from "h3";
 import RSS from "rss";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 
-export default defineEventHandler(async (event) => {
+export default async function handler(req, res) {
   const url =
     "https://cafe.naver.com/cookieruntoa?iframe_url=/ArticleList.nhn%3Fsearch.clubid=31055592%26search.menuid=1%26search.boardtype=L";
 
@@ -40,4 +39,4 @@ export default defineEventHandler(async (event) => {
     event.res.statusCode = 500;
     event.res.end("Internal Server Error");
   }
-});
+}
