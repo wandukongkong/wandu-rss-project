@@ -1,30 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import puppeteerCore from "puppeteer-core";
-import puppeteer from "puppeteer";
-import chromium from "@sparticuz/chromium";
-
-const LOCAL_CHROME_EXECUTABLE =
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-
-async function getBrowser() {
-  if (process.env.VERCEL_ENV === "production") {
-    const executablePath = await chromium.executablePath();
-
-    const browser = await puppeteerCore.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
-      headless: chromium.headless,
-    });
-    return browser;
-  } else {
-    const browser = await puppeteer.launch();
-    return browser;
-  }
-}
+const puppeteer = require("puppeteer");
 
 export default async function handler(req, res) {
-  const browser = await getBrowser();
+  const browser = await puppeteer.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    headless: true,
+  });
 
   const page = await browser.newPage();
   const targetUrl =
@@ -46,7 +26,6 @@ export default async function handler(req, res) {
 
   await browser.close();
 
-  // XML 형식으로 변환
   const xmlPosts = posts
     .map(
       (post) => `
