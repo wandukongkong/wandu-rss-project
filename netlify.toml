@@ -1,5 +1,5 @@
 [build]
-command = "next build && node node_modules/puppeteer/install.js" 	
+command = "next build && npx puppeteer browsers install chromes" 	
 publish = ".next"
 
 [[plugins]]
