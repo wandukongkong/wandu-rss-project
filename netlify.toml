@@ -1,5 +1,5 @@
 [build]
-command = "next build && npx puppeteer browsers install chromes" 	
+command = "REACT_APP_STAGE=dev CI='' next build" 	
 publish = ".next"
 
 [[plugins]]
