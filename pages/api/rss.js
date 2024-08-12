@@ -1,63 +1,74 @@
-import axios from "axios";
-import * as cheerio from "cheerio";
+import { NextRequest, NextResponse } from "next/server";
+import puppeteerCore from "puppeteer-core";
+import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
 
-async function fetchDataWithRetry(url, retries = 3, delay = 1000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await axios.get(url);
-      return response.data;
-    } catch (error) {
-      if (i < retries - 1) {
-        console.warn(`Retrying... (${i + 1}/${retries})`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } else {
-        throw error; // 최대 재시도 횟수에 도달하면 오류를 다시 던집니다.
-      }
-    }
+const LOCAL_CHROME_EXECUTABLE =
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
+async function getBrowser() {
+  if (process.env.VERCEL_ENV === "production") {
+    const executablePath = await chromium.executablePath();
+
+    const browser = await puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+    });
+    return browser;
+  } else {
+    const browser = await puppeteer.launch();
+    return browser;
   }
 }
 
 export default async function handler(req, res) {
+  const browser = await getBrowser();
+
+  const page = await browser.newPage();
   const targetUrl =
     "https://cafe.naver.com/cookieruntoa?iframe_url=/ArticleList.nhn%3Fsearch.clubid=31055592%26search.menuid=1%26search.boardtype=L";
 
-  try {
-    const html = await fetchDataWithRetry(targetUrl);
-    const $ = cheerio.load(html);
+  await page.goto(targetUrl, { waitUntil: "networkidle2" });
 
-    const posts = [];
-    $(".article").each((index, element) => {
-      const title = $(element).find(".article-title").text();
-      const link = $(element).find(".article-title a").attr("href");
-      posts.push({ title, link });
+  // 페이지에서 필요한 데이터를 추출합니다.
+  const posts = await page.evaluate(() => {
+    const articles = [];
+    const items = document.querySelectorAll(".article");
+    items.forEach((item) => {
+      const title = item.querySelector(".article-title").innerText;
+      const link = item.querySelector(".article-title a").href;
+      articles.push({ title, link });
     });
+    return articles;
+  });
 
-    const xmlPosts = posts
-      .map(
-        (post) => `
-      <item>
-        <title><![CDATA[${post.title}]]></title>
-        <link><![CDATA[${post.link}]]></link>
-      </item>
-    `
-      )
-      .join("");
+  await browser.close();
 
-    const xml = `
-      <rss version="2.0">
-        <channel>
-          <title>Naver Cafe Latest Posts</title>
-          <link>${targetUrl}</link>
-          <description>Latest posts from Naver Cafe</description>
-          ${xmlPosts}
-        </channel>
-      </rss>
-    `;
+  // XML 형식으로 변환
+  const xmlPosts = posts
+    .map(
+      (post) => `
+    <item>
+      <title><![CDATA[${post.title}]]></title>
+      <link><![CDATA[${post.link}]]></link>
+    </item>
+  `
+    )
+    .join("");
 
-    res.setHeader("Content-Type", "application/xml");
-    res.status(200).send(xml);
-  } catch (error) {
-    console.error("Error fetching or parsing page:", error);
-    res.status(500).send("Error generating RSS feed");
-  }
+  const xml = `
+    <rss version="2.0">
+      <channel>
+        <title>Naver Cafe Latest Posts</title>
+        <link>${targetUrl}</link>
+        <description>Latest posts from Naver Cafe</description>
+        ${xmlPosts}
+      </channel>
+    </rss>
+  `;
+
+  res.setHeader("Content-Type", "application/xml");
+  res.status(200).send(xml);
 }
