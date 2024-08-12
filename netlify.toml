@@ -3,4 +3,4 @@
   command = "npm run build"
 
 [[plugins]]
-  package = "netlify-plugin-chrome"
+  package = "netlify-plugin-chromium"
